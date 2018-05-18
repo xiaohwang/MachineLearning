@@ -1,0 +1,128 @@
+---
+title: "Machine Learning Course Assignment"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. May use any of the other variables to predict with and should create a report describing how the model is built, how cross validation is performed, what the expected out of sample error is, and why the choices were done. Lastly, use the prediction model to predict 20 different test cases.
+
+The data available for this project are original Training Data (pml-training.csv) and Testing Data (pml-testing.csv). The Training Data is used for modeling, prediction and validation. The Testing Data contains 20 different test cases on which the final prediction model will perform prediction.
+
+# Modeling
+
+Our outcome variable is classe, a factor variable with 5 levels. Prediction evaluations will be based on maximizing the accuracy and minimizing the out-of-sample error. Two models will be tested using decision tree and random forest algorithms. The model with the highest accuracy will be chosen as our final model.
+
+Cross-validation will be performed by partitioning our Training data randomly without replacement into 2 subsets: "trainingset" data (80% of the original Training data) and "testingset" data (the rest 20%). Our models will be fitted on the "trainingset" data set, and tested on the "testingset" data set. Once the most accurate model is chosen, it will be tested on the original Testing data.
+
+# Results
+
+## 1. loading required packages
+
+```{r}
+#install.packages("caret")
+#install.packages("randomForest")
+#install.packages("rpart")
+#install.packages("rpart.plot")
+#install.packages('e1071', dependencies=TRUE) # Package related to confusionMatrix
+
+library(caret)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+set.seed(88888888)
+```
+
+## 2. loading and processing data
+
+```{r}
+training <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+testing <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+                    
+training<-training[,colSums(is.na(training)) == 0]
+testing <-testing[,colSums(is.na(testing)) == 0]
+
+training   <-training[,-c(1:7)]
+testing <-testing[,-c(1:7)]
+
+dim(training)
+dim(testing)
+head(training$classe,30)
+tail(training$classe,30)
+#head(testing)
+```
+
+## 3. partitioning the training data into training set and testing set
+
+```{r}
+samples <- createDataPartition(y=training$classe, p=0.80, list=FALSE)
+trainingset <- training[samples, ] 
+testingset <- training[-samples, ]
+
+dim(trainingset)
+dim(testingset)
+#head(trainingset)
+#head(testingset)
+
+dim(trainingset)[1]/dim(training)[1] # check percentage (80%) of the tranining set portion
+```
+
+## 4. checking the two partition sets with plot
+
+```{r}
+par(mfrow=c(1,2))
+plot(trainingset$classe, col="green", main="variable classe in training set", xlab="classe levels", ylab="frequency")
+plot(testingset$classe, col="green", main="variable classe in testing set", xlab="classe levels", ylab="frequency")
+
+```
+
+## 5. prediction model 1: Decision Tree method
+
+```{r}
+
+mod1 <- rpart(classe ~ .,trainingset, method="class")
+
+pred1 <- predict(mod1, testingset, type = "class") # Predicting
+
+rpart.plot(mod1, main="classification tree", extra=102, under=TRUE, faclen=0) # Plot of decision tree
+```
+
+```{r}
+
+confusionMatrix(pred1, testingset$classe) # Test results on partition testing set
+```
+
+## 6. prediction model 2: Random Forest method
+
+```{r}
+
+mod2<- randomForest(classe ~. , data=trainingset, method="class")
+
+pred2 <- predict(mod2, testingset, type = "class") # Predicting
+
+confusionMatrix(pred2, testingset$classe) # Test results on partition testing set
+```
+
+## 7. choosing the final model
+
+Accuracy for Random Forest model was 0.994 compared to 0.714 for Decision Tree model. The random Forest model is chosen. The accuracy of the model is 0.994. The expected out-of-sample error is estimated at 0.6%. The expected out-of-sample error is calculated as 1 - accuracy for predictions made against the cross-validation set. 
+
+Note that Accuracy is the proportion of correct classified observation over the total sample in the "testingset" data set. The expected value of the out-of-sample error will correspond to the expected number of missclassified observations/total observations in the Test data set, which is the quantity: 1-accuracy found from the cross-validation data set.
+
+## 8. final prediction results on original testing data
+
+```{r}
+predfinal <- predict(mod2, testing, type="class")
+predfinal
+```
+
+
+
+
+
+
